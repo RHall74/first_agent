@@ -10,7 +10,7 @@ def get_file_content(working_directory, file_path):
     # LLM guardrails: restricts access to only the "working_directory" we give it.
     if not abs_file_path.startswith(abs_work_dir_path + os.sep): # Check if the file path is contained in working_directory
         return(f'Error: Cannot read "{file_path}" as it is outside the permitted working directory')
-    if not os.path.isfile(abs_file_path): # Check if the path is a valid directoryfile
+    if not os.path.isfile(abs_file_path): # Check if the path is a valid file
         return(f'Error: File not found or is not a regular file: "{file_path}"')
 
     try:
