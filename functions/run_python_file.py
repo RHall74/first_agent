@@ -1,5 +1,4 @@
-# python
-
+from google.genai import types
 import os
 import subprocess
 import sys
@@ -45,3 +44,20 @@ def run_python_file(working_directory, file_path, args=[]):
         lines.append(f"Process exited with code {result.returncode}")
 
     return "\n".join(lines)
+
+
+# Schema that tells the LLM how to use the function
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Execute Python files with optional arguments in the specified directory, constrained to the working directory.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="Relative path to the file to execute.",
+            ),
+        },
+        required=["file_path"],
+    ),
+)
