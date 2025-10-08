@@ -40,46 +40,60 @@ def main():
         print('Usage: python main.py "<your prompt here>"')
         exit(1)
     load_dotenv(dotenv_path="key.env")
+
     api_key = os.environ.get("GEMINI_API_KEY") 
     client = genai.Client(api_key=api_key)
     messages = [
         types.Content(role="user", parts=[types.Part(text=argv[1])])
     ]
-    response = client.models.generate_content(
-        model='gemini-2.0-flash-001',
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=system_prompt
-        )
-    )
-    
-    # Print token usage details if verbose flag is set
-    if len(argv) > 2 and argv[2] == "--verbose":
-        print(f"User prompt: {argv[1]}")
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-
     verbose = len(argv) > 2 and argv[2] == "--verbose"
+    counter = 0
 
-    print("Response:")
-    if response.function_calls:
-        function_call_part = response.function_calls[0] # Grab the function call(s).
-        function_call_result = call_function(function_call_part, verbose=verbose) # Call the function call(s).
+    while counter < 20:
+        counter += 1
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.0-flash-001',
+                contents=messages,
+                config=types.GenerateContentConfig(
+                    tools=[available_functions], system_instruction=system_prompt
+                )
+            )
 
-        # Validate the structure
-        if (
-            not function_call_result.parts
-            or not function_call_result.parts[0].function_response
-            or function_call_result.parts[0].function_response.response is None
-        ):
-            raise RuntimeError("Function call returned an invalid tool response")
+            for candidate in response.candidates:
+                messages.append(candidate.content)
 
-        if verbose:
-            print(f"-> {function_call_result.parts[0].function_response.response}")
+            # Print token usage details if verbose flag is set
+            if len(argv) > 2 and argv[2] == "--verbose":
+                print(f"User prompt: {argv[1]}")
+                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+                print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
 
-    else:
-        print(response.text)
+            print("Response:")
+            if response.function_calls:
+                function_call_part = response.function_calls[0] # Grab the function call(s).
+                function_call_result = call_function(function_call_part, verbose=verbose) # Call the function call(s).
 
+                # Validate the structure
+                if (
+                    not function_call_result.parts
+                    or not function_call_result.parts[0].function_response
+                    or function_call_result.parts[0].function_response.response is None
+                ):
+                    raise RuntimeError("Function call returned an invalid tool response")
+
+                if verbose:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+
+                messages.append(types.Content(role="user", parts=function_call_result.parts))
+
+            else:
+                print(response.text)
+                break
+
+            
+        except Exception as e:
+            print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
