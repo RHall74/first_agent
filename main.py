@@ -1,4 +1,6 @@
+# python
 from dotenv import load_dotenv
+from functions.call_function import call_function
 from functions.get_file_content import schema_get_file_content
 from functions.get_files_info import schema_get_files_info
 from functions.run_python_file import schema_run_python_file
@@ -57,10 +59,24 @@ def main():
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
 
+    verbose = len(argv) > 2 and argv[2] == "--verbose"
+
     print("Response:")
     if response.function_calls:
-        for call in response.function_calls:
-            print(f"Calling function: {call.name}({call.args})")
+        function_call_part = response.function_calls[0] # Grab the function call(s).
+        function_call_result = call_function(function_call_part, verbose=verbose) # Call the function call(s).
+
+        # Validate the structure
+        if (
+            not function_call_result.parts
+            or not function_call_result.parts[0].function_response
+            or function_call_result.parts[0].function_response.response is None
+        ):
+            raise RuntimeError("Function call returned an invalid tool response")
+
+        if verbose:
+            print(f"-> {function_call_result.parts[0].function_response.response}")
+
     else:
         print(response.text)
 
